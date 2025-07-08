@@ -36,22 +36,37 @@ endif()
 
 
 
-# Unit test executable
-
 # Fetch CppUTest
-include(FetchContent)
-FetchContent_Declare(
-    cpputest
-    GIT_REPOSITORY https://github.com/cpputest/cpputest.git
-    GIT_TAG        master
-)
-FetchContent_MakeAvailable(cpputest)
+find_package(CppUTest)
+if(NOT CppUTest_FOUND)
+    include(FetchContent)
+    FetchContent_Declare(
+        CppUTest
+        GIT_REPOSITORY https://github.com/cpputest/cpputest.git
+        GIT_TAG        4363c47a86125c8b3557e58de0032d16a2c7f7ea
+    )
+    # set options on cpputest
+    set(C++11 ON CACHE BOOL "Tell cpputest to build for C++11")
+    set(MEMORY_LEAK_DETECTION OFF CACHE BOOL "Tell cpputest to disable memory leak tests")
+    set(EXTENSIONS OFF CACHE BOOL "tell cpputest to disable extensions")
+    FetchContent_MakeAvailable(CppUTest)
+endif()
 
 
 # Unit test executable
-add_executable(cpp_buffer_tests test/main.cpp)
-target_link_libraries(cpp_buffer_tests PUBLIC cpp_buffer_impl cpp_buffer PRIVATE CppUTest CppUTestExt)
-# target_include_directories(cpp_buffer_tests PUBLIC include)
+add_executable(cpp_buffer_tests tests/main.cpp)
+target_link_libraries(cpp_buffer_tests
+    PUBLIC
+        cpp_buffer
+    PRIVATE
+        CppUTest
+)
+if(CPP_BUFFER_STATIC)
+    target_link_libraries(cpp_buffer_tests 
+    PUBLIC 
+        cpp_buffer_impl 
+    )
+endif()
 
 # Enable testing and add test
 include(CTest)
