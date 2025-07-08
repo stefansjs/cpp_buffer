@@ -1,4 +1,7 @@
-#include <memory>
+#pragma once
+
+#include<cassert>
+#include<memory>
 
 
 namespace CPPBuffer
@@ -57,14 +60,14 @@ class BufferIterator;
  *      // this will fail under certain conditions:
  *      // buffer[10]; // calls a removable assert macro that fails (usually used for unit testing)
  */
-template< typename T, typename ptr_t >
-class Buffer<T, 1u, ptr_t>
+template< typename T, typename pointer_t >
+class Buffer<T, 1u, pointer_t>
 {
     public:
     //typedefs
-    typedef ptr_t ptr_t;
-    typedef T* Iterator;
-    typedef const T * ConstIterator;
+    typedef pointer_t   ptr_t;
+    typedef T*          Iterator;
+    typedef const T *   ConstIterator;
 
     // constructors and destructors are all default for the trivial case
     Buffer() = default;
@@ -77,7 +80,7 @@ class Buffer<T, 1u, ptr_t>
 
     // The actual constructors:
     Buffer(const ptr_t &, size_t);
-    Buffer(Buffer &&, size_t);
+    Buffer(ptr_t &&, size_t);
 
     template< typename allocator_t >
     Buffer(size_t, allocator_t &);
@@ -110,5 +113,79 @@ inline size_t size_of(const Buffer<T,s,ptr_t> &buffer) {
     return buffer.size() * sizeof(T);
 }
 
+
+
+
+// The actual constructors:
+template< typename T, typename ptr_t >
+Buffer<T, 1u, ptr_t>::Buffer(const ptr_t &p, size_t s) 
+    : mMemory(p)
+    , mSize(s) 
+{}
+
+template< typename T, typename ptr_t >
+Buffer<T, 1u, ptr_t>::Buffer(ptr_t &&other, size_t s) 
+    : mMemory(std::move(other))
+    , mSize(s) 
+{}
+
+template< typename T, typename ptr_t >
+template< typename allocator_t >
+Buffer<T, 1u, ptr_t>::Buffer(size_t n, allocator_t &a) 
+    : mMemory(a.allocate(n))
+    , mSize(n) 
+{}
+
+template< typename T, typename ptr_t >
+Buffer<T, 1u, ptr_t>::Buffer(size_t n) 
+    : mMemory(std::shared_ptr<T>(new T[n], [](T* p){ delete[] p; }))
+    , mSize(n) 
+{}
+
+template< typename T, typename ptr_t >
+T &Buffer<T, 1u, ptr_t>::operator[](int i) {
+    assert(i >= 0 && static_cast<size_t>(i) < mSize);
+    return mMemory.get()[i];
+}
+
+template< typename T, typename ptr_t >
+const T &Buffer<T, 1u, ptr_t>::operator[](int i) const 
+{
+    assert(i >= 0 && static_cast<size_t>(i) < mSize);
+    return mMemory.get()[i];
+}
+
+// iterators
+template< typename T, typename ptr_t >
+typename Buffer<T, 1u, ptr_t>::Iterator Buffer<T, 1u, ptr_t>::begin() { 
+    return mMemory.get(); 
+}
+
+template< typename T, typename ptr_t >
+typename Buffer<T, 1u, ptr_t>::Iterator Buffer<T, 1u, ptr_t>::end() {
+    return mMemory.get() + mSize; 
+}
+
+template< typename T, typename ptr_t >
+typename Buffer<T, 1u, ptr_t>::ConstIterator Buffer<T, 1u, ptr_t>::begin() const { 
+    return mMemory.get(); 
+}
+
+template< typename T, typename ptr_t >
+typename Buffer<T, 1u, ptr_t>::ConstIterator Buffer<T, 1u, ptr_t>::end() const { 
+    return mMemory.get() + mSize; 
+}
+
+template< typename T, typename ptr_t >
+size_t Buffer<T, 1u, ptr_t>::size() const { 
+    return mSize; 
+}
+
+// finally slice operations
+template< typename T, typename ptr_t >
+template< uint8_t s >
+Slice<T, s, ptr_t> Buffer<T, 1u, ptr_t>::slice(size_t begin, size_t end) { 
+    return Slice<T, s, ptr_t>(mMemory, mSize, begin, end, s); 
+}
 
 }// namespace CPPBuffer
